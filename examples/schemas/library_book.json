@@ -1,0 +1,66 @@
+{
+    "license": "@@.examples.licenses.mit",
+    "namespace": "library",
+    "class": {
+        "name": "book",
+        "private": {
+            "prefix" : "_"
+        },
+        "fields": {
+            "private": [
+                {
+                    "name": "title",
+                    "type": "QString"
+                },
+                {
+                    "name": "href",
+                    "type": "QString"
+                },
+                {
+                    "name": "thumbnail",
+                    "type": "QString"
+                },
+                {
+                    "name": "description",
+                    "type": "QString"
+                },
+                {
+                    "name": "authors",
+                    "type": "std::vector<std::string>"
+                },
+                {
+                    "name": "genres",
+                    "type": "std::vector<std::string>"
+                },
+                {
+                    "name": "chapters",
+                    "type": "std::vector<chapter>"
+                },
+                {
+                    "name": "volumes",
+                    "type": "std::vector<volume>"
+                }
+            ]
+        }
+    },
+    "header": {
+        "extension": ".h",
+        "includes": {
+            "internal": [
+                "chapter.h",
+                "volume.h"
+            ],
+            "external": [
+                "string",
+                "vector"
+            ]
+        }
+    },
+    "source": {
+        "extension": ".cpp",
+        "includes": {
+            "internal": [],
+            "external": []
+        }
+    }
+}

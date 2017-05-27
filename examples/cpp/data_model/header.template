@@ -1,0 +1,51 @@
+/*
+$$.license
+*/
+
+$$.header.includes.internal {{ 
+"$$"
+}}
+
+$$.header.includes.external {{ 
+<$$>
+}}
+
+$$.namespace{{namespace $$ {}}
+class $$.class.name {
+public:
+
+    // Default Constructor
+    $$.class.name();
+
+    // Copy Constructor
+    $$.class.name(const $$.class.name& copy);
+
+    // Move Constructor
+    $$.class.name($$.class.name&& move);
+
+    // Copy Assignment
+    $$.class.name& operator=(const $$.class.name& copy);
+
+    // Move Assignment
+    $$.class.name& operator=($$.class.name&& move);
+
+    // Getters
+    $$.class.fields.private {{
+    $$.type $$.name();
+    }}
+
+    // Setters (Copy and Move)
+    $$.class.fields.private {{
+    !!.class.name& $$.name(const $$.type& $$.name);
+    !!.class.name& $$.name($$.type&& $$.name);
+
+    }}
+
+private:
+    $$.class.fields.private {{
+        $$.type !!.class.private.prefix$$.name;
+    }}
+};
+$$.namespace{{    
+}
+}}
