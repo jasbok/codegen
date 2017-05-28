@@ -1,0 +1,43 @@
+{
+    "__codegen__" : {
+        "astyle" : {
+            "args" : [
+                "style=linux",
+                "indent=spaces=8"
+            ]
+        }
+    },
+    "license": "@@.examples.licenses.mit",
+    "namespace": "project_namespace",
+    "project": {
+        "name" : "My Project",
+        "description" : "This is the generated description of my project."
+    },
+    "class": {
+        "name": "class_name",
+        "private": {
+            "prefix" : "_"
+        },
+        "fields": {
+            "public": [],
+            "protected": [],
+            "private": []
+        }
+    },
+    "header": {
+        "guard" : "%%.uppercase{{$$.namespace_$$.class.name_$$.header.extension}}",
+        "extension": ".h",
+        "includes": {
+            "internal": [],
+            "external": []
+        }
+    },
+    "source": {
+        "extension": ".cpp",
+        "includes": {
+            "own" : "$$.class.name_$$.header.extension",
+            "internal": [],
+            "external": []
+        }
+    }
+}

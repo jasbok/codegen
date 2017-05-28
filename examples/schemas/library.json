@@ -9,6 +9,12 @@
                 "path" : "examples/cpp/data_model/source.template",
                 "dest" : "build/examples/cpp/library.cpp"
             }
+        ],
+        "extends" : [
+            {
+                "path" : "examples/schemas/cpp_base.json",
+                "append_arrays" : false
+            }
         ]
     },
     "license": "@@.examples.licenses.mit",

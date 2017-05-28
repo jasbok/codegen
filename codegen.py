@@ -33,13 +33,35 @@ import subprocess
 import sys
 import time
 
-R_SCOPE = "(\$\$|!!|\^\^|@@|%%)"
-R_PATH = "(?:\.([\w|\.]*))?"
-R_SELECT = "(?:\s*\[\[(.*?)\]\])?"
-R_EXPANSION = "(?:[ |\t]*{{(?:[ |\t]*\n*)?(.*?)[ |\t]*}}(?:[ |\t]*\n)?)?"
 
-REGEX_TOKEN = re.compile(
-    R_SCOPE + R_PATH + R_SELECT + R_EXPANSION, re.DOTALL | re.MULTILINE)
+class Token(object):
+
+    R_OPERATOR = "(\$\$|!!|\^\^|@@|%%)"
+    R_PATH = "(?:\.([\w|\.]*))?"
+    R_SELECT = "(?:\s*\[\[(.*?)\]\])?"
+    R_EXPANSION = "(?:[ |\t]*{{(?:[ |\t]*\n*)?(.*?)[ |\t]*}}(?:[ |\t]*\n)?)?"
+
+    REGEX_TOKEN = re.compile(
+        R_OPERATOR + R_PATH + R_SELECT + R_EXPANSION, re.DOTALL | re.MULTILINE)
+
+    def __init__(self, match):
+        self.operator = match.group(1)
+        self.path = match.group(2)
+        self.select = match.group(3)
+        self.expansion = match.group(4)
+        self.start = match.start()
+        self.end = match.end()
+
+    def __repr__(self):
+        return "[operator='{}', path='{}', select='{}', expansion='{}', " \
+                "start='{}', end='{}']".format(self.operator, self.path,
+                                          self.select, self.expansion,
+                                          self.start, self.end)
+
+    @staticmethod
+    def find(content):
+        match = Token.REGEX_TOKEN.search(content)
+        return Token(match) if match else None
 
 
 class Codegen(object):
@@ -119,39 +141,40 @@ class Codegen(object):
         content = template
 
         while True:
-            match = REGEX_TOKEN.search(content)
-            if match is None:
+            token = Token.find(content)
+            if token is None:
                 result += content
                 break
 
-            result += content[:match.start()]
-            content = self._process_token(match, schema) + content[match.end():]
+            print (token)
+
+            result += content[:token.start]
+            content = self._process_token(token, schema) + content[token.end:]
 
         return result
 
-    def _process_token(self, match, schema):
-        token = self._get_token(match)
-        op = token["operator"]
+    def _process_token(self, token, schema):
+        op = token.operator
         if op == "$$" or op == "!!" or op == "^^":
             result = self._process_schema_token(token, schema)
         elif op == "%%":
             result = self._process_function_token(token)
         elif op == "@@":
-            result = self._load_template(token["path"])
+            result = self._load_template(token.path)
 
         return result or ""
 
     def _process_schema_token(self, token, schema):
             compiled = ""
-            self._push_scope(token["operator"], token["path"])
+            self._push_scope(token.operator, token.path)
             var = self._get_var(schema, self._scopes[-1])
             if var is not None:
-                if token["expansion"] is not None:
-                    select = token["select"]
+                if token.expansion is not None:
+                    select = token.select
                     if isinstance(var, list):
                         for index in self._get_selected_indices(var, select):
                             self._scopes[-1].append(index)
-                            compiled += self._compile(token["expansion"], schema)
+                            compiled += self._compile(token.expansion, schema)
                             self._scopes[-1].pop()
                     else:
                         compile = select is None \
@@ -160,7 +183,7 @@ class Codegen(object):
                             or isinstance(var, float) and var == float(select) \
                             or isinstance(var, str) and var == select
                         if compile:
-                            compiled = self._compile(token["expansion"], schema)
+                            compiled = self._compile(token.expansion, schema)
 
                 else:
                     compiled = str(var)
@@ -168,10 +191,10 @@ class Codegen(object):
             return compiled
 
     def _process_function_token(self, token):
-        path = token["path"]
+        path = token.path
 
         if path == "date":
-            return datetime.datetime.now().strftime(token["expansion"])
+            return datetime.datetime.now().strftime(token.expansion)
         elif path == "git.name":
             return self._git_config("user.name")
         elif path == "git.email":
@@ -182,14 +205,6 @@ class Codegen(object):
         return subprocess.check_output(["git", "config", property])     \
             .decode("utf-8")                                            \
             .replace("\n", "")
-
-    def _get_token(self, match):
-        return {
-            "operator": match.group(1),
-            "path": match.group(2),
-            "select": match.group(3),
-            "expansion": match.group(4),
-        }
 
     def _get_selected_indices(self, arr, select):
         indices = range(len(arr))
@@ -240,12 +255,10 @@ class Codegen(object):
             var = var[seg]
 
         if isinstance(var, str):
-            match = REGEX_TOKEN.match(var)
-            if match:
-                token = self._get_token(match)
-
-                if token["operator"] == "@@":
-                    var = self._load_template(token["path"])
+            token = Token.find(var)
+            if token:
+                if token.operator == "@@":
+                    var = self._load_template(token.path)
 
         return var
 
@@ -253,10 +266,10 @@ class Codegen(object):
         try:
             with open(path) as data_file:
                 return json.load(data_file)
-        except json.decoder.JSONDecodeError:
-            print("Unable to parse json: ", path)
-        except IOError:
-            print("An IO error occurred while loading schema: ", path)
+        except json.decoder.JSONDecodeError as ex:
+            print("Unable to parse json: ", path, str(ex))
+        except IOError as ex:
+            print("An IO error occurred while loading schema: ", path, str(ex))
         return None
 
     def _load_template(self, path):

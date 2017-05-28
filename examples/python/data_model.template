@@ -1,0 +1,15 @@
+'''
+$$.license
+'''
+
+class $$.class.name(object):
+
+    def __init__(self, args):
+        $$.class.fields.private{{
+            self._$$.name = args["$$.name"]
+        }}
+
+    $$.class.fields.private{{
+            def $$.name(self):
+                return self._$$.name
+    }}

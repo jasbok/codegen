@@ -8,6 +8,10 @@
             {
                 "path" : "examples/cpp/data_model/source.template",
                 "dest" : "build/examples/cpp/chapter.cpp"
+            },
+            {
+                "path" : "examples/python/data_model.template",
+                "dest" : "build/examples/python/chapter.py"
             }
         ]
     },
