@@ -3,14 +3,14 @@ $$.license
 */
 
 $$.source.includes.internal {{
-    "$$"
+#include "$$"
 }}
 $$.source.includes.external {{
-    <$$>
+#include <$$>
 }}
 
 namespace $$.namespace {
-    
+
 // Default Constructor
 $$.class.name::$$.class.name()
 :   $$.class.fields.private[[:-1]]{{
@@ -62,7 +62,7 @@ $$.class.name& $$.class.name::operator=($$.class.name&& move){
 //
 $$.class.fields.private {{
     $$.type !!.class.name::$$.name(){
-        return !!.class.private.prefix$$.name
+        return !!.class.private.prefix$$.name;
     }
 
 }}

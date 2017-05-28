@@ -3,18 +3,18 @@
         "templates": [
             {
                 "path": "examples/cpp/data_model/header.template",
-                "dest": "build/examples/cpp/book.h"
+                "dest": "build/examples/cpp/volume.h"
             },
             {
                 "path" : "examples/cpp/data_model/source.template",
-                "dest" : "build/examples/cpp/book.cpp"
+                "dest" : "build/examples/cpp/volume.cpp"
             }
         ]
     },
     "license": "@@.examples.licenses.mit",
     "namespace": "library",
     "class": {
-        "name": "book",
+        "name": "volume",
         "private": {
             "prefix" : "_"
         },
@@ -25,8 +25,8 @@
                     "type": "std::string"
                 },
                 {
-                    "name": "href",
-                    "type": "std::string"
+                    "name": "number",
+                    "type": "unsigned int"
                 },
                 {
                     "name": "thumbnail",
@@ -37,27 +37,18 @@
                     "type": "std::string"
                 },
                 {
-                    "name": "authors",
-                    "type": "std::vector<std::string>"
-                },
-                {
-                    "name": "genres",
-                    "type": "std::vector<std::string>"
-                },
-                {
-                    "name": "chapters",
-                    "type": "std::vector<chapter>"
+                    "name": "books",
+                    "type": "std::vector<book>"
                 }
             ]
         }
     },
     "header": {
-        "guard" : "LIBRARY_BOOK_HPP",
+        "guard" : "LIBRARY_VOLUME_HPP",
         "extension": ".h",
         "includes": {
             "internal": [
-                "book.h",
-                "chapter.h"
+                "book.h"
             ],
             "external": [
                 "string",
@@ -69,7 +60,7 @@
         "extension": ".cpp",
         "includes": {
             "internal": [
-                "book.h"
+                "volume.h"
             ],
             "external": []
         }

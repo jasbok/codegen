@@ -3,18 +3,18 @@
         "templates": [
             {
                 "path": "examples/cpp/data_model/header.template",
-                "dest": "build/examples/cpp/book.h"
+                "dest": "build/examples/cpp/chapter.h"
             },
             {
                 "path" : "examples/cpp/data_model/source.template",
-                "dest" : "build/examples/cpp/book.cpp"
+                "dest" : "build/examples/cpp/chapter.cpp"
             }
         ]
     },
     "license": "@@.examples.licenses.mit",
     "namespace": "library",
     "class": {
-        "name": "book",
+        "name": "chapter",
         "private": {
             "prefix" : "_"
         },
@@ -25,8 +25,8 @@
                     "type": "std::string"
                 },
                 {
-                    "name": "href",
-                    "type": "std::string"
+                    "name": "number",
+                    "type": "unsigned int"
                 },
                 {
                     "name": "thumbnail",
@@ -35,33 +35,17 @@
                 {
                     "name": "description",
                     "type": "std::string"
-                },
-                {
-                    "name": "authors",
-                    "type": "std::vector<std::string>"
-                },
-                {
-                    "name": "genres",
-                    "type": "std::vector<std::string>"
-                },
-                {
-                    "name": "chapters",
-                    "type": "std::vector<chapter>"
                 }
             ]
         }
     },
     "header": {
-        "guard" : "LIBRARY_BOOK_HPP",
+        "guard" : "LIBRARY_CHAPTER_HPP",
         "extension": ".h",
         "includes": {
-            "internal": [
-                "book.h",
-                "chapter.h"
-            ],
+            "internal": [],
             "external": [
-                "string",
-                "vector"
+                "string"
             ]
         }
     },
@@ -69,7 +53,7 @@
         "extension": ".cpp",
         "includes": {
             "internal": [
-                "book.h"
+                "chapter.h"
             ],
             "external": []
         }

@@ -1,13 +1,16 @@
+#ifndef $$.header.guard
+#define $$.header.guard
+
 /*
 $$.license
 */
 
-$$.header.includes.internal {{ 
-"$$"
+$$.header.includes.internal {{
+#include "$$"
 }}
 
-$$.header.includes.external {{ 
-<$$>
+$$.header.includes.external {{
+#include <$$>
 }}
 
 $$.namespace{{namespace $$ {}}
@@ -46,6 +49,8 @@ private:
         $$.type !!.class.private.prefix$$.name;
     }}
 };
-$$.namespace{{    
+$$.namespace{{
 }
 }}
+
+#endif

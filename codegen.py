@@ -86,7 +86,18 @@ class Codegen(object):
                     modified = self._check_recently_modified()
 
                 if len(modified) > 0:
-                    print(modified)
+                    for path, mod in modified.items():
+                        filename, extention = os.path.splitext(path)
+
+                        if extention == ".json":
+                            schema = self._load_schema(path)
+                            if schema is not None:
+                                for template in self._get_templates_from_schema(schema):
+                                    if "path" in template:
+                                        contents = self._file_contents(template["path"])
+                                        if "dest" in template:
+                                            self._write_to_file(template["dest"], self._compile(contents, schema))
+
                 try:
                     self._watch_interval_counter -= 1
                     time.sleep(self._recent_interval)
@@ -239,8 +250,13 @@ class Codegen(object):
         return var
 
     def _load_schema(self, path):
-        with open(path) as data_file:
-            return json.load(data_file)
+        try:
+            with open(path) as data_file:
+                return json.load(data_file)
+        except json.decoder.JSONDecodeError:
+            print("Unable to parse json: ", path)
+        except IOError:
+            print("An IO error occurred while loading schema: ", path)
         return None
 
     def _load_template(self, path):
@@ -257,6 +273,15 @@ class Codegen(object):
                 print("The following file was not found: ", path)
                 self._files[path] = None
         return self._files[path]
+
+    def _write_to_file(self, path, contents):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        try:
+            with open(path, 'w') as file:
+                file.write(contents)
+        except IOError:
+            print("Unable to write to file: ", path)
 
     def _get_modified_files(self):
         results = {}
@@ -291,6 +316,11 @@ class Codegen(object):
                 self._watched_files[path] = new
                 modified[path] = new
         return modified
+
+    def _get_templates_from_schema(self, schema):
+        if "__codegen__" in schema and "templates" in schema["__codegen__"]:
+            return [template for template in schema["__codegen__"]["templates"]]
+        return []
 
 
 def main():
