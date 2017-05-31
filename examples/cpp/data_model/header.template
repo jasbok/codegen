@@ -1,3 +1,6 @@
+/*
+@@.examples.codegen.generated
+*/
 #ifndef $$.header.guard
 #define $$.header.guard
 

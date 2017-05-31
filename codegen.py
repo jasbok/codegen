@@ -33,6 +33,41 @@ import sys
 import time
 
 
+class Project(object):
+    """Contains configs to generate project files."""
+    def __init__(self, project_schema):
+        if not isinstance(project_schema, Schema):
+            raise ValueError("Project() - Expected Schema:", project_schema)
+
+        self._project_schema = project_schema
+        self._schemas = {}
+        self._templates = {}
+
+        if "schemas" in self._project_schema.json():
+            for schema in self._project_schema.json()["schemas"]:
+                spath = schema["path"]
+                schema_config = {
+                    "file": Schema(File(spath)),
+                    "templates": {}
+                }
+                if "templates" in schema["templates"]:
+                    for template in schema["templates"]:
+                        tpath = template["path"]
+                        self._templates[tpath] = {
+                            "file": File(tpath)
+                        }
+                        schema_config["templates"][tpath] = {
+                            "destination": self._templates["destination"]
+                        }
+                self._schemas[spath] = schema_config
+
+    def __repr__(self):
+        return "Project[schema='{}',schemas={}, templates={}]".format(
+            self._project_schema,
+            self._schemas.values(),
+            self._templates.values())
+
+
 class File(object):
     """Helper class for file operations."""
     def __init__(self, path):
@@ -209,11 +244,17 @@ class Schema(object):
             self._json = json.loads(self._file.read())
         return updated
 
+    def json(self):
+        """Returns the json contained in the schema."""
+        return self._json
+
     def value(self, path, scope=None):
         """Gets the value corresponding with the path, None otherwise."""
-        if not isinstance(path, list):
+        if isinstance(path, str):
+            path = [path]
+        elif not isinstance(path, list):
             raise ValueError(
-                "Schema.variable - Expected list:", path)
+                "Schema.variable - Expected str or list:", path)
 
         if scope is None:
             scope = []
@@ -438,7 +479,7 @@ class Codegen(object):
         self._files = {}
         self._schemas = {}
         self._templates = {}
-        self._scopes = [[]]
+        self._projects = {}
 
         self._watched_dirs = []
         self._watched_files = {}
@@ -460,6 +501,10 @@ class Codegen(object):
         """Adds a template to the internal list."""
         self._templates[template] = File(template)
 
+    def add_project(self, project):
+        """Adds a template to the internal list."""
+        self._projects[project] = Project(Schema(File(project)))
+
     def add_watched(self, directory):
         """Adds a directoryt to watch for changes."""
         self._watched_dirs.append(directory)
@@ -470,8 +515,12 @@ class Codegen(object):
 
     def start(self):
         """Starts processing."""
-        if self._watched_dirs:
-            raise NotImplementedError("Needs to reimplent file logic.")
+        if self._projects:
+            for project in self._projects.values():
+                print(project)
+
+        elif self._watched_dirs:
+            raise NotImplementedError("Need to reimplement file logic.")
         else:
             self.process(self._schemas.values(), self._templates.values())
 
@@ -495,7 +544,10 @@ def main():
         if arg == "-w" or arg == "--watch":
             for directory in val.split(","):
                 codegen.add_watched(directory)
-        elif arg == "-p" or arg == "--print":
+        elif arg == "-p" or arg == "--project":
+            for path in val.split(","):
+                codegen.add_project(path)
+        elif arg == "--print":
             codegen.print_to_stdout()
 
     for i, arg in enumerate(sys.argv):
