@@ -1,56 +1,44 @@
 {
-  "schemas": [
+  "output": [
     {
-      "path": "examples/schemas/library.json",
-      "templates": [
-        {
-          "path": "examples/cpp/data_model/header.template",
-          "destination": "build/examples/cpp/library.h"
-        },
-        {
-          "path": "examples/cpp/data_model/source.template",
-          "destination": "build/examples/cpp/library.cpp"
-        }
-      ]
+      "schema": "examples/schemas/library.json",
+      "template": "examples/cpp/data_model/header.template",
+      "out": "build/examples/cpp/library.h"
     },
     {
-      "path": "examples/schemas/library_book.json",
-      "templates": [
-        {
-          "path": "examples/cpp/data_model/header.template",
-          "destination": "build/examples/cpp/book.h"
-        },
-        {
-          "path": "examples/cpp/data_model/source.template",
-          "destination": "build/examples/cpp/book.cpp"
-        }
-      ]
+      "schema": "examples/schemas/library.json",
+      "template": "examples/cpp/data_model/source.template",
+      "out": "build/examples/cpp/library.cpp"
     },
     {
-      "path": "examples/schemas/library_chapter.json",
-      "templates": [
-        {
-          "path": "examples/cpp/data_model/header.template",
-          "destination": "build/examples/cpp/chapter.h"
-        },
-        {
-          "path": "examples/cpp/data_model/source.template",
-          "destination": "build/examples/cpp/chapter.cpp"
-        }
-      ]
+      "schema": "examples/schemas/library_book.json",
+      "template": "examples/cpp/data_model/header.template",
+      "out": "build/examples/cpp/book.h"
     },
     {
-      "path": "examples/schemas/library_volume.json",
-      "templates": [
-        {
-          "path": "examples/cpp/data_model/header.template",
-          "destination": "build/examples/cpp/volume.h"
-        },
-        {
-          "path": "examples/cpp/data_model/source.template",
-          "destination": "build/examples/cpp/volume.cpp"
-        }
-      ]
+      "schema": "examples/schemas/library_book.json",
+      "template": "examples/cpp/data_model/source.template",
+      "out": "build/examples/cpp/book.cpp"
+    },
+    {
+      "schema": "examples/schemas/library_chapter.json",
+      "template": "examples/cpp/data_model/header.template",
+      "out": "build/examples/cpp/chapter.h"
+    },
+    {
+      "schema": "examples/schemas/library_chapter.json",
+      "template": "examples/cpp/data_model/source.template",
+      "out": "build/examples/cpp/chapter.cpp"
+    },
+    {
+      "schema": "examples/schemas/library_volume.json",
+      "template": "examples/cpp/data_model/header.template",
+      "out": "build/examples/cpp/volume.h"
+    },
+    {
+      "schema": "examples/schemas/library_volume.json",
+      "template": "examples/cpp/data_model/source.template",
+      "out": "build/examples/cpp/volume.cpp"
     }
   ]
 }

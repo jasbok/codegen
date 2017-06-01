@@ -1,12 +1,4 @@
 {
-    "__codegen__" : {
-        "astyle" : {
-            "args" : [
-                "style=linux",
-                "indent=spaces=8"
-            ]
-        }
-    },
     "license": "@@.examples.licenses.mit",
     "namespace": "project_namespace",
     "project": {

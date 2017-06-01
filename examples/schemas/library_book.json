@@ -1,16 +1,4 @@
 {
-    "__codegen__": {
-        "templates": [
-            {
-                "path": "examples/cpp/data_model/header.template",
-                "dest": "build/examples/cpp/book.h"
-            },
-            {
-                "path" : "examples/cpp/data_model/source.template",
-                "dest" : "build/examples/cpp/book.cpp"
-            }
-        ]
-    },
     "license": "@@.examples.licenses.mit",
     "namespace": "library",
     "class": {

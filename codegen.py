@@ -33,124 +33,6 @@ import sys
 import time
 
 
-class Project(object):
-    """Contains configs to generate project files."""
-    def __init__(self, project_schema):
-        if not isinstance(project_schema, Schema):
-            raise ValueError("Project() - Expected Schema:", project_schema)
-
-        self._project_schema = project_schema
-        self._schemas = {}
-        self._templates = {}
-
-        if "schemas" in self._project_schema.json():
-            for schema in self._project_schema.json()["schemas"]:
-                spath = schema["path"]
-                schema_config = {
-                    "file": Schema(File(spath)),
-                    "templates": {}
-                }
-                if "templates" in schema["templates"]:
-                    for template in schema["templates"]:
-                        tpath = template["path"]
-                        self._templates[tpath] = {
-                            "file": File(tpath)
-                        }
-                        schema_config["templates"][tpath] = {
-                            "destination": self._templates["destination"]
-                        }
-                self._schemas[spath] = schema_config
-
-    def __repr__(self):
-        return "Project[schema='{}',schemas={}, templates={}]".format(
-            self._project_schema,
-            self._schemas.values(),
-            self._templates.values())
-
-
-class File(object):
-    """Helper class for file operations."""
-    def __init__(self, path):
-        if not isinstance(path, str):
-            raise ValueError(
-                "File() - Expected string: ", path)
-
-        self._path = path
-        self._atime = None
-        self._mtime = None
-        self._contents = None
-
-    def __repr__(self):
-        return "File[path='{}', atime='{}', mtime='{}']".format(
-            self._path, self._atime, self._mtime)
-
-    def atime(self, no_cache=True):
-        """Get the last access time."""
-        if no_cache or self._atime is None:
-            self._atime = None
-            try:
-                self._atime = os.path.getatime(self._path)
-            except OSError as ex:
-                print("File.atime - OS exception:", self._path, ex)
-
-        return self._atime
-
-    def mtime(self, no_cache=True):
-        """Get the last modified time."""
-        if no_cache or self._mtime is None:
-            self._mtime = None
-            try:
-                self._mtime = os.path.getmtime(self._path)
-            except OSError as ex:
-                print("File.mtime - OS exception:", self._path, ex)
-
-        return self._mtime
-
-    def exists(self):
-        """Checks whether file exists."""
-        return os.path.isfile(self._path)
-
-    def path(self):
-        """Gets the file path."""
-        return self._path
-
-    def read(self, no_cache=True):
-        """Reads the contents of the file."""
-        if no_cache and self._mtime != self.mtime() or self._contents is None:
-            self._contents = None
-            try:
-                with open(self._path, 'r') as file:
-                    self._contents = file.read()
-            except FileNotFoundError as ex:
-                print("File.read - File not found:", self._path, ex)
-            except IOError as ex:
-                print("File.read - IO error on load:", self._path, ex)
-
-        return self._contents
-
-    def write(self, contents):
-        """Writes the contents to cache and disk."""
-        success = False
-        try:
-            os.makedirs(os.path.dirname(self._path), exist_ok=True)
-            with open(self._path, 'w') as file:
-                file.write(contents)
-                success = True
-        except IOError as ex:
-            print("File.write - An IO error occurred: ", self._path, ex)
-
-        self.atime()
-        self.mtime()
-
-        return success
-
-    def empty_cache(self):
-        """Empties the cache."""
-        self._atime = None
-        self._mtime = None
-        self._contents = None
-
-
 class Token(object):
     """Contains functionality to read and store codegen tokens."""
     R_OPERATOR = r"(\$\$|!!|\^\^|@@|%%)"
@@ -214,38 +96,118 @@ class Token(object):
         return Token(match) if match else None
 
 
-class Schema(object):
-    """Contains functionality to parse and view a json schema."""
-    def __init__(self, file):
-        if not isinstance(file, File):
-            raise ValueError("Schema() - Expected File: ", file)
+class File(object):
+    """Helper class for file operations."""
+    def __init__(self, path):
+        if not isinstance(path, str):
+            raise ValueError(
+                "File() - Expected string: ", path)
 
-        self._file = file
+        self._path = path
+        self._atime = None
         self._mtime = None
-        self._json = None
-        self.update()
+        self._contents = None
 
     def __repr__(self):
-        return "Schema[file={}]".format(self._file)
+        return "File[path='{}', atime='{}', mtime='{}']".format(
+            self._path, self._atime, self._mtime)
+
+    def atime(self, no_cache=True):
+        """Get the last access time."""
+        if no_cache or self._atime is None:
+            self._atime = None
+            try:
+                self._atime = os.path.getatime(self._path)
+            except OSError as ex:
+                print("File.atime - OS exception:", self._path, ex)
+
+        return self._atime
+
+    def mtime(self, no_cache=True):
+        """Get the last modified time."""
+        if no_cache or self._mtime is None:
+            self._mtime = None
+            try:
+                self._mtime = os.path.getmtime(self._path)
+            except OSError as ex:
+                print("File.mtime - OS exception:", self._path, ex)
+
+        return self._mtime
+
+    def exists(self):
+        """Checks whether file exists."""
+        return os.path.isfile(self._path)
+
+    def path(self):
+        """Gets the file path."""
+        return self._path
+
+    def parent_dir(self):
+        """Gets the parent directoy of the file."""
+        return os.path.dirname(self._path)
+
+    def read(self, no_cache=True):
+        """Reads the contents of the file."""
+        if no_cache and self._mtime != self.mtime() or self._contents is None:
+            self._contents = None
+            try:
+                with open(self._path, 'r') as file:
+                    self._contents = file.read()
+            except FileNotFoundError as ex:
+                print("File.read - File not found:", self._path, ex)
+            except IOError as ex:
+                print("File.read - IO error on load:", self._path, ex)
+
+        return self._contents
+
+    def write(self, contents):
+        """Writes the contents to cache and disk."""
+        success = False
+        try:
+            os.makedirs(os.path.dirname(self._path), exist_ok=True)
+            with open(self._path, 'w') as file:
+                file.write(contents)
+                success = True
+        except IOError as ex:
+            print("File.write - An IO error occurred: ", self._path, ex)
+
+        self.atime()
+        self.mtime()
+
+        return success
+
+    def empty_cache(self):
+        """Empties the cache."""
+        self._atime = None
+        self._mtime = None
+        self._contents = None
+
+
+class Schema(File):
+    """Contains functionality to parse and view a json schema."""
+    def __init__(self, path):
+        if not isinstance(path, str):
+            raise ValueError("Schema() - Expected str: ", path)
+
+        File.__init__(self, path)
+        self._mtime = None
+        self._json = None
+
+    def __repr__(self):
+        return "Schema[file={}]".format(self.path())
 
     def id(self):
         """Returns the id of the schema."""
-        return self._file.path()
-
-    def mtime(self):
-        """Returns the last modified time of the schema."""
-        return self._mtime
+        return self.path()
 
     def update(self):
         """Updates the schema if it has been modified."""
-        updated = self._mtime != self._file.mtime()
-        if updated:
-            self._mtime = self._file.mtime()
-            self._json = json.loads(self._file.read())
-        return updated
+        self._json = json.loads(self.read())
 
-    def json(self):
+    def json(self, path=None):
         """Returns the json contained in the schema."""
+        if isinstance(path, str):
+            return self._json[path] if path in self._json else None
         return self._json
 
     def value(self, path, scope=None):
@@ -275,6 +237,67 @@ class Schema(object):
             var = var[seg]
 
         return var
+
+
+class Project(Schema):
+    """Contains configs to generate project files."""
+    def __init__(self, path):
+        if not isinstance(path, str):
+            raise ValueError("Project() - Expected str:", path)
+
+        Schema.__init__(self, path)
+
+        self._filestore = {
+            "schema": {},
+            "template": {},
+            "out": {}
+        }
+        self._recent = []
+
+    def __repr__(self):
+        return "Project[schema='{}',schemas={}, templates={}]".format(
+            self._project_schema,
+            self._schemas.values(),
+            self._templates.values())
+
+    def update(self):
+        super().update()
+        output = self.json("output")
+        if output is not None:
+            for item in output:
+                if "schema" in item and "template" in item and "out" in item:
+                    schema = Schema(item["schema"])
+                    template = File(item["template"])
+                    out = File(item["out"])
+
+                    su = self._upsert_file("schema", schema)
+                    tu = self._upsert_file("template", template)
+                    ou = self._upsert_file("out", out)
+
+                    if su or tu or ou:
+                        schema.update()
+                        compiler = Compiler(schema)
+                        compiled = compiler.compile(template)
+                        out.write(compiled)
+                        self._upsert_file("out", out)
+                        print("Compiled file:", out)
+                else:
+                    print("Malformed output item:", item)
+
+    def _upsert_file(self, ftype, file):
+        updated = True
+        if file.path() not in self._filestore[ftype]:
+            self._filestore[ftype][file.path()] = {
+                "file": file,
+                "mtime": file.mtime()
+            }
+        else:
+            mtime = file.mtime()
+            if self._filestore[ftype][file.path()]["mtime"] < mtime:
+                self._filestore[ftype][file.path()]["mtime"] = mtime
+            else:
+                updated = False
+        return updated
 
 
 class Schema_Stack(object):
@@ -408,70 +431,6 @@ class Git(object):
         return result
 
 
-class File_Watcher(object):
-    """Watches files for changes."""
-    def __init__(self, dirs, active_time=600):
-        self.dirs = dirs
-        self.active_time = active_time
-        self._watched = []
-        self._modified = []
-        self._active = []
-
-    def watched(self):
-        """Returns the list of watched files."""
-        return self._watched
-
-    def active(self):
-        """Returns the list of active files."""
-        return self.active
-
-    def modified(self, only_active=False):
-        """Returns the list of modified files."""
-        return self._modified
-
-    def update(self, only_active=False):
-        """Updates the current status of watched files."""
-        watched = {}
-        for directory in self.dirs:
-            for path in glob.glob(directory + '/**', recursive=True):
-                if not os.path.isdir(path):
-                    watched[path] = os.path.getmtime(path)
-
-    def _check_modified(self):
-        results = {}
-
-        for directory in self.dirs:
-            for path in glob.glob(directory + '/**', recursive=True):
-                if not os.path.isdir(path):
-                    results[path] = os.path.getmtime(path)
-
-        diff = {
-            key: value for key, value in results.items()
-            if key not in self._watched or
-            value - self._watched[key] > 0
-            }
-        self._watched = results
-
-        curr = time.time()
-        self._modified = {
-            key: value
-            for key, value in self._watched.items()
-            if curr - value < self._recent_ttl
-        }
-
-        return diff
-
-    def _check_active(self):
-        modified = {}
-        for path, old in self._recently_modified.items():
-            new = os.path.getmtime(path)
-            if new - old > 0.0:
-                self._recently_modified[path] = new
-                self._watched[path] = new
-                modified[path] = new
-        return modified
-
-
 class Codegen(object):
     """Performs the main logic."""
     def __init__(self):
@@ -495,7 +454,8 @@ class Codegen(object):
 
     def add_schema(self, schema):
         """Adds a schema to the internal list."""
-        self._schemas[schema] = Schema(File(schema))
+        self._schemas[schema] = Schema(schema)
+        self._schemas[schema].update()
 
     def add_template(self, template):
         """Adds a template to the internal list."""
@@ -503,7 +463,7 @@ class Codegen(object):
 
     def add_project(self, project):
         """Adds a template to the internal list."""
-        self._projects[project] = Project(Schema(File(project)))
+        self._projects[project] = Project(project)
 
     def add_watched(self, directory):
         """Adds a directoryt to watch for changes."""
@@ -517,10 +477,7 @@ class Codegen(object):
         """Starts processing."""
         if self._projects:
             for project in self._projects.values():
-                print(project)
-
-        elif self._watched_dirs:
-            raise NotImplementedError("Need to reimplement file logic.")
+                project.update()
         else:
             self.process(self._schemas.values(), self._templates.values())
 
@@ -541,10 +498,7 @@ def main():
 
     def parse_arg(arg, val):
         """Parses the given argument and value."""
-        if arg == "-w" or arg == "--watch":
-            for directory in val.split(","):
-                codegen.add_watched(directory)
-        elif arg == "-p" or arg == "--project":
+        if arg == "-p" or arg == "--project":
             for path in val.split(","):
                 codegen.add_project(path)
         elif arg == "--print":
