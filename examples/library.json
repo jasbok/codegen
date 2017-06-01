@@ -1,44 +1,44 @@
 {
   "output": [
     {
-      "schema": "examples/schemas/library.json",
-      "template": "examples/cpp/data_model/header.template",
-      "out": "build/examples/cpp/library.h"
+      "schema": "schemas/library.json",
+      "template": "cpp/data_model/header.template",
+      "out": "../build/examples/cpp/library.h"
     },
     {
-      "schema": "examples/schemas/library.json",
-      "template": "examples/cpp/data_model/source.template",
-      "out": "build/examples/cpp/library.cpp"
+      "schema": "schemas/library.json",
+      "template": "cpp/data_model/source.template",
+      "out": "../build/examples/cpp/library.cpp"
     },
     {
-      "schema": "examples/schemas/library_book.json",
-      "template": "examples/cpp/data_model/header.template",
-      "out": "build/examples/cpp/book.h"
+      "schema": "schemas/library_book.json",
+      "template": "cpp/data_model/header.template",
+      "out": "../build/examples/cpp/book.h"
     },
     {
-      "schema": "examples/schemas/library_book.json",
-      "template": "examples/cpp/data_model/source.template",
-      "out": "build/examples/cpp/book.cpp"
+      "schema": "schemas/library_book.json",
+      "template": "cpp/data_model/source.template",
+      "out": "../build/examples/cpp/book.cpp"
     },
     {
-      "schema": "examples/schemas/library_chapter.json",
-      "template": "examples/cpp/data_model/header.template",
-      "out": "build/examples/cpp/chapter.h"
+      "schema": "schemas/library_chapter.json",
+      "template": "cpp/data_model/header.template",
+      "out": "../build/examples/cpp/chapter.h"
     },
     {
-      "schema": "examples/schemas/library_chapter.json",
-      "template": "examples/cpp/data_model/source.template",
-      "out": "build/examples/cpp/chapter.cpp"
+      "schema": "schemas/library_chapter.json",
+      "template": "cpp/data_model/source.template",
+      "out": "../build/examples/cpp/chapter.cpp"
     },
     {
-      "schema": "examples/schemas/library_volume.json",
-      "template": "examples/cpp/data_model/header.template",
-      "out": "build/examples/cpp/volume.h"
+      "schema": "schemas/library_volume.json",
+      "template": "cpp/data_model/header.template",
+      "out": "../build/examples/cpp/volume.h"
     },
     {
-      "schema": "examples/schemas/library_volume.json",
-      "template": "examples/cpp/data_model/source.template",
-      "out": "build/examples/cpp/volume.cpp"
+      "schema": "schemas/library_volume.json",
+      "template": "cpp/data_model/source.template",
+      "out": "../build/examples/cpp/volume.cpp"
     }
   ]
 }

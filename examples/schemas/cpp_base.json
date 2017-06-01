@@ -1,5 +1,5 @@
 {
-    "license": "@@.examples.licenses.mit",
+    "license": "@@.licenses.mit",
     "namespace": "project_namespace",
     "project": {
         "name" : "My Project",

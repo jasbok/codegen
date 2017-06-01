@@ -24,13 +24,12 @@ SOFTWARE.
 '''
 
 import datetime
-import glob
 import json
+import logging
 import os
 import re
 import subprocess
 import sys
-import time
 
 
 class Token(object):
@@ -98,6 +97,7 @@ class Token(object):
 
 class File(object):
     """Helper class for file operations."""
+
     def __init__(self, path):
         if not isinstance(path, str):
             raise ValueError(
@@ -107,6 +107,7 @@ class File(object):
         self._atime = None
         self._mtime = None
         self._contents = None
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def __repr__(self):
         return "File[path='{}', atime='{}', mtime='{}']".format(
@@ -116,10 +117,15 @@ class File(object):
         """Get the last access time."""
         if no_cache or self._atime is None:
             self._atime = None
-            try:
-                self._atime = os.path.getatime(self._path)
-            except OSError as ex:
-                print("File.atime - OS exception:", self._path, ex)
+            if not self.exists():
+                self._log.warning("Could not read atime, file does not exist: "
+                                  "%s", self._path)
+            else:
+                try:
+                    self._atime = os.path.getatime(self._path)
+                except OSError as ex:
+                    self._logger.error("File.atime - OS exception: %s %s",
+                                       self._path, ex)
 
         return self._atime
 
@@ -127,10 +133,15 @@ class File(object):
         """Get the last modified time."""
         if no_cache or self._mtime is None:
             self._mtime = None
-            try:
-                self._mtime = os.path.getmtime(self._path)
-            except OSError as ex:
-                print("File.mtime - OS exception:", self._path, ex)
+            if not self.exists():
+                self._log.warning("Could not read mtime, file does not exist: "
+                                  "%s", self._path)
+            else:
+                try:
+                    self._mtime = os.path.getmtime(self._path)
+                except OSError as ex:
+                    self._log.error("File.mtime - OS exception: %s %s",
+                                    self._path, ex)
 
         return self._mtime
 
@@ -150,15 +161,30 @@ class File(object):
         """Reads the contents of the file."""
         if no_cache and self._mtime != self.mtime() or self._contents is None:
             self._contents = None
-            try:
-                with open(self._path, 'r') as file:
-                    self._contents = file.read()
-            except FileNotFoundError as ex:
-                print("File.read - File not found:", self._path, ex)
-            except IOError as ex:
-                print("File.read - IO error on load:", self._path, ex)
+            if not self.exists():
+                self._log.warning("Could not read file, file does not exist: "
+                                  "%s", self._path)
+            else:
+                try:
+                    with open(self._path, 'r') as file:
+                        self._contents = file.read()
+                except FileNotFoundError as ex:
+                    self._log.error("File.read - File not found: %s %s",
+                                    self._path, ex)
+                except IOError as ex:
+                    self._log.error("File.read - IO error on load: %s %s",
+                                    self._path, ex)
 
         return self._contents
+
+    def touch(self):
+        """Create an empty file if it doesn't exist and/or update the utime."""
+        if not self.exists():
+            self.write("")
+        else:
+            os.utime(self._path)
+            self.atime()
+            self.mtime()
 
     def write(self, contents):
         """Writes the contents to cache and disk."""
@@ -169,7 +195,8 @@ class File(object):
                 file.write(contents)
                 success = True
         except IOError as ex:
-            print("File.write - An IO error occurred: ", self._path, ex)
+            self._log.error("File.write - An IO error occurred: %s %s",
+                            self._path, ex)
 
         self.atime()
         self.mtime()
@@ -202,7 +229,12 @@ class Schema(File):
 
     def update(self):
         """Updates the schema if it has been modified."""
-        self._json = json.loads(self.read())
+        contents = self.read()
+        if contents:
+            self._json = json.loads(contents)
+        else:
+            print("Could not load json from file: ", self.path())
+            self._json = {}
 
     def json(self, path=None):
         """Returns the json contained in the schema."""
@@ -253,22 +285,33 @@ class Project(Schema):
             "out": {}
         }
         self._recent = []
+        self._owd = None
+        self._log = logging.getLogger(self.__class__.__name__)
 
     def __repr__(self):
-        return "Project[schema='{}',schemas={}, templates={}]".format(
-            self._project_schema,
-            self._schemas.values(),
-            self._templates.values())
+        return "Project[path='{}']".format(self.path())
 
     def update(self):
         super().update()
         output = self.json("output")
         if output is not None:
+            self._cd_project_dir()
             for item in output:
                 if "schema" in item and "template" in item and "out" in item:
                     schema = Schema(item["schema"])
                     template = File(item["template"])
                     out = File(item["out"])
+
+                    if not schema.exists():
+                        self._log.error("Schema does not exist: %s",
+                                        schema.path())
+                        continue
+                    if not template.exists():
+                        self._log.error("Template does not exist: %s",
+                                        template.path())
+                        continue
+                    if not out.exists():
+                        out.touch()
 
                     su = self._upsert_file("schema", schema)
                     tu = self._upsert_file("template", template)
@@ -280,9 +323,9 @@ class Project(Schema):
                         compiled = compiler.compile(template)
                         out.write(compiled)
                         self._upsert_file("out", out)
-                        print("Compiled file:", out)
                 else:
                     print("Malformed output item:", item)
+            self._cd_owd()
 
     def _upsert_file(self, ftype, file):
         updated = True
@@ -298,6 +341,15 @@ class Project(Schema):
             else:
                 updated = False
         return updated
+
+    def _cd_project_dir(self):
+        self._owd = os.getcwd()
+        os.chdir(self.parent_dir())
+
+    def _cd_owd(self):
+        if self._owd is not None:
+            os.chdir(self._owd)
+            self._owd = None
 
 
 class Schema_Stack(object):
@@ -362,6 +414,10 @@ class Compiler(object):
         else:
             raise ValueError(
                 "Compiler.compile - Expected str or File: ", template)
+
+        if not tmp:
+            print("Could not compile template, empty template.")
+            return ""
 
         out = ""
         token = Token.find(tmp)
@@ -495,6 +551,14 @@ class Codegen(object):
 def main():
     """" The main function."""
     codegen = Codegen()
+
+    msg_format = "[%(levelname)s] %(asctime)s "                             \
+                 "(%(filename)s:%(lineno)d -> %(name)s::%(funcName)s): "    \
+                 "%(message)s"
+    date_format = "%Y-%m-%dT%H:%M:%S"
+    logging.basicConfig(level=logging.DEBUG,
+                        format=msg_format,
+                        datefmt=date_format)
 
     def parse_arg(arg, val):
         """Parses the given argument and value."""

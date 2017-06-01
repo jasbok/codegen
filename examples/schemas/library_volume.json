@@ -1,5 +1,5 @@
 {
-    "license": "@@.examples.licenses.mit",
+    "license": "@@.licenses.mit",
     "namespace": "library",
     "class": {
         "name": "volume",
