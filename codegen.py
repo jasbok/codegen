@@ -31,6 +31,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 
 class Token(object):
@@ -305,6 +306,7 @@ class Project(Schema):
         }
         self._recent = []
         self._owd = None
+        self._updated_files = {}
         self._log = logging.getLogger(self.__class__.__name__)
 
     def __repr__(self):
@@ -315,6 +317,7 @@ class Project(Schema):
         output = self.json("output")
         if output is not None:
             self._cd_project_dir()
+            self._updated_files = {}
             for item in output:
                 self._process_output(item)
             self._cd_owd()
@@ -325,9 +328,6 @@ class Project(Schema):
             templates = glob.glob(item["template"])
             out = item["out"]
 
-            print(schemas)
-            print(templates)
-
             for schema in schemas:
                 for template in templates:
                     self._upsert_group(schema, template, out)
@@ -337,7 +337,6 @@ class Project(Schema):
     def _upsert_group(self, schema_path, template_path, out_path):
         schema = Schema(schema_path)
         template = File(template_path)
-        out = File(Compiler(schema).compile(out_path))
 
         if not schema.exists():
             self._log.error("Schema does not exist: %s",
@@ -347,6 +346,8 @@ class Project(Schema):
             self._log.error("Template does not exist: %s",
                             template.path())
             return False
+
+        out = File(Compiler(schema).compile(out_path))
         if not out.exists():
             out.touch()
 
@@ -355,14 +356,16 @@ class Project(Schema):
         ou = self._upsert_file("out", out)
 
         if su or tu or ou:
-            schema.update()
-            compiler = Compiler(schema)
-            compiled = compiler.compile(template)
+            print("Compiling:", schema.path(), template.path(), out.path())
+            compiled = Compiler(schema).compile(template)
             out.write(compiled)
-            self._upsert_file("out", out)
+            self._upsert_file("out", out, force_update=True)
         return True
 
-    def _upsert_file(self, ftype, file):
+    def _upsert_file(self, ftype, file, force_update=False):
+        if not force_update and file.path() in self._updated_files:
+            return self._updated_files[file.path()]
+
         updated = True
         if file.path() not in self._filestore[ftype]:
             self._filestore[ftype][file.path()] = {
@@ -375,6 +378,8 @@ class Project(Schema):
                 self._filestore[ftype][file.path()]["mtime"] = mtime
             else:
                 updated = False
+
+        self._updated_files[file.path()] = updated
         return updated
 
     def _cd_project_dir(self):
@@ -548,15 +553,9 @@ class Git(object):
 class Codegen(object):
     """Performs the main logic."""
     def __init__(self):
-        self._dest = ""
-        self._files = {}
         self._schemas = {}
         self._templates = {}
         self._projects = {}
-
-        self._watched_dirs = []
-        self._watched_files = {}
-        self._recently_modified = {}
 
         self._do_print = False
         self._do_watch = False
@@ -569,7 +568,6 @@ class Codegen(object):
     def add_schema(self, schema):
         """Adds a schema to the internal list."""
         self._schemas[schema] = Schema(schema)
-        self._schemas[schema].update()
 
     def add_template(self, template):
         """Adds a template to the internal list."""
@@ -579,9 +577,9 @@ class Codegen(object):
         """Adds a template to the internal list."""
         self._projects[project] = Project(project)
 
-    def add_watched(self, directory):
-        """Adds a directoryt to watch for changes."""
-        self._watched_dirs.append(directory)
+    def watch_project(self):
+        """Print compile results to stdout."""
+        self._do_watch = True
 
     def print_to_stdout(self):
         """Print compile results to stdout."""
@@ -590,8 +588,15 @@ class Codegen(object):
     def start(self):
         """Starts processing."""
         if self._projects:
-            for project in self._projects.values():
-                project.update()
+            while True:
+                for project in self._projects.values():
+                    project.update()
+                if not self._do_watch:
+                    break
+                try:
+                    time.sleep(2)
+                except KeyboardInterrupt:
+                    break
         else:
             self.process(self._schemas.values(), self._templates.values())
 
@@ -623,6 +628,8 @@ def main():
         if arg == "-p" or arg == "--project":
             for path in val.split(","):
                 codegen.add_project(path)
+        if arg == "-w" or arg == "--watch":
+            codegen.watch_project()
         elif arg == "--print":
             codegen.print_to_stdout()
 
