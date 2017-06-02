@@ -19,7 +19,6 @@ $$.header.includes.external {{
 $$.namespace{{namespace $$ {}}
 class $$.class.name {
 public:
-
     // Default Constructor
     $$.class.name();
 
@@ -37,23 +36,20 @@ public:
 
     // Getters
     $$.class.fields.private {{
-    $$.type $$.name();
+      $$.type $$.name();
     }}
 
     // Setters (Copy and Move)
     $$.class.fields.private {{
-    !!.class.name& $$.name(const $$.type& $$.name);
-    !!.class.name& $$.name($$.type&& $$.name);
+      !!.class.name& $$.name(const $$.type& $$.name);
+      !!.class.name& $$.name($$.type&& $$.name);
 
     }}
-
 private:
     $$.class.fields.private {{
         $$.type !!.class.private.prefix$$.name;
     }}
 };
-$$.namespace{{
-}
-}}
+$$.namespace{{}}}
 
 #endif

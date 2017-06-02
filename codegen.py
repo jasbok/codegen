@@ -37,7 +37,7 @@ class Token(object):
     R_OPERATOR = r"(\$\$|!!|\^\^|@@|%%)"
     R_PATH = r"(?:\.([\w|\.]*))?"
     R_SELECT = r"(?:\s*\[\[(.*?)\]\])?"
-    R_EXPANSION = r"(?:[ |\t]*{{(?:[ |\t]*\n*)?(.*?)[ |\t]*}}(?:[ |\t]*\n)?)?"
+    R_EXPANSION = r"(?:[ |\t]*{{(?:[ ]*\n)?(.*?)[ ]*}}(?:[ ]*\n)?)?"
 
     REGEX_TOKEN = re.compile(
         R_OPERATOR + R_PATH + R_SELECT + R_EXPANSION, re.DOTALL | re.MULTILINE)
@@ -47,8 +47,12 @@ class Token(object):
         self.path = match.group(2).split(".") if match.group(2) else []
         self.select = match.group(3)
         self.expansion = match.group(4)
+        self.indent = self._expansion_indent()
         self.start = match.start()
         self.end = match.end()
+
+        if match.group(0).count("\n") == 1 and match.group(0)[-1] == "\n":
+            self.expansion += "\n"
 
     def __repr__(self):
         return "Token[operator='{}', path='{}', select='{}', expansion='{}', "\
@@ -87,6 +91,17 @@ class Token(object):
                 indices = [indices[int(self.select)]]
 
         return indices
+
+    def _expansion_indent(self):
+        if self.expansion:
+            indent = 0
+            for c in self.expansion:
+                if c == '\n':
+                    indent = 0
+                elif c != ' ' and c != '\t':
+                    return indent
+                indent += 1
+            return 0
 
     @staticmethod
     def find(content):
@@ -423,10 +438,31 @@ class Compiler(object):
         token = Token.find(tmp)
         while token is not None:
             out += tmp[:token.start]
-            tmp = self._resolve(token) + tmp[token.end:]
+            resolved = self._resolve(token)
+
+            if token.expansion:
+                indent = token.indent - Compiler.curr_length(out)
+                if indent != 0:
+                    ind = "\n" + " " * abs(indent)
+                    if indent > 0:
+                        resolved = resolved.replace(ind, "\n")[token.indent:]
+                    else:
+                        resolved = resolved.replace("\n", ind)
+
+            tmp = resolved + tmp[token.end:]
             token = Token.find(tmp)
 
         return out + tmp
+
+    @staticmethod
+    def curr_length(string):
+        """Gets the length of the last line."""
+        indent = 0
+        for c in reversed(string):
+            if c == '\n':
+                return indent
+            indent += 1
+        return 0
 
     def _resolve(self, token):
         op = token.operator
@@ -469,6 +505,7 @@ class Compiler(object):
                 compiled = str(var)
 
         self._stack.pop()
+
         return compiled
 
 
