@@ -1,0 +1,24 @@
+{
+  "output": [
+    {
+      "schema": "schemas/library.json",
+      "template": "python/data_model.template",
+      "out": "../build/examples/python/library.py"
+    },
+    {
+      "schema": "schemas/library_book.json",
+      "template": "python/data_model.template",
+      "out": "../build/examples/python/library_book.py"
+    },
+    {
+      "schema": "schemas/library_chapter.json",
+      "template": "python/data_model.template",
+      "out": "../build/examples/python/library_chapter.py"
+    },
+    {
+      "schema": "schemas/library_volume.json",
+      "template": "python/data_model.template",
+      "out": "../build/examples/python/library_volume.py"
+    }
+  ]
+}

@@ -9,8 +9,10 @@ $$.source.includes.external {{
 #include <$$>
 }}
 
-namespace $$.namespace {
-
+$$.namespace{{
+namespace $$
+{
+}}
 // Default Constructor
 $$.class.name::$$.class.name()
 :   $$.class.fields.private[[:-1]]{{
@@ -74,5 +76,4 @@ $$.class.fields.private {{
     }
 
 }}
-
-}
+$$.namespace{{}}}

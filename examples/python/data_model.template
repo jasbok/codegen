@@ -1,15 +1,19 @@
 '''
-$$.license
+@@!.codegen.generated
 '''
 
 class $$.class.name(object):
 
     def __init__(self, args):
         $$.class.fields.private{{
-            self._$$.name = args["$$.name"]
+            self._$$.name = args["$$.name"] if "$$.name" in args else None
         }}
 
     $$.class.fields.private{{
-            def $$.name(self):
-                return self._$$.name
+            def $$.name(self, $$.name=None):
+            """A Getter/Setter for $$.name"""
+                if val is None:
+                  return self._$$.name
+                self._$$.name = $$.name
+
     }}
