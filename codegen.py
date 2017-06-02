@@ -34,7 +34,7 @@ import sys
 
 class Token(object):
     """Contains functionality to read and store codegen tokens."""
-    R_OPERATOR = r"(\$\$|!!|\^\^|@@|%%)"
+    R_OPERATOR = r"(\$\$|!!|\^\^|@@!|@@|%%)"
     R_PATH = r"(?:\.([\w|\.]*))?"
     R_SELECT = r"(?:\s*\[\[(.*?)\]\])?"
     R_EXPANSION = r"(?:[ |\t]*{{(?:[ ]*\n)?(.*?)[ ]*}}(?:[ ]*\n)?)?"
@@ -70,9 +70,12 @@ class Token(object):
             return Git.config("user.email")
         return None
 
-    def resolve_template(self):
+    def resolve_template(self, cut_last_char=False):
         """Resolves the template from the token path."""
-        return File(os.path.join(*self.path) + ".template").read()
+        template = File(os.path.join(*self.path) + ".template").read()
+        if cut_last_char:
+            template = template[:-1]
+        return template
 
     def resolve_indices(self, lst):
         """Resolves the list indices from the token select."""
@@ -431,7 +434,7 @@ class Compiler(object):
                 "Compiler.compile - Expected str or File: ", template)
 
         if not tmp:
-            print("Could not compile template, empty template.")
+            print("Could not compile template: empty template.")
             return ""
 
         out = ""
@@ -471,8 +474,8 @@ class Compiler(object):
             result = self._resolve_value(token)
         elif op == "%%":
             result = token.resolve_function()
-        elif op == "@@":
-            result = token.resolve_template()
+        elif op == "@@" or op == "@@!":
+            result = token.resolve_template(op == "@@!")
 
         return result or ""
 

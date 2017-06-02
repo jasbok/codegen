@@ -1,12 +1,9 @@
 /*
-@@.codegen.generated
+@@!.codegen.generated
 */
+
 #ifndef $$.header.guard
 #define $$.header.guard
-
-/*
-$$.license
-*/
 
 $$.header.includes.internal {{
 #include "$$"
@@ -34,13 +31,9 @@ public:
     // Move Assignment
     $$.class.name& operator=($$.class.name&& move);
 
-    // Getters
+    // Getters and Setters (Copy and Move)
     $$.class.fields.private {{
       $$.type $$.name();
-    }}
-
-    // Setters (Copy and Move)
-    $$.class.fields.private {{
       !!.class.name& $$.name(const $$.type& $$.name);
       !!.class.name& $$.name($$.type&& $$.name);
 

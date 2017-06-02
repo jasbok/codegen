@@ -1,5 +1,5 @@
 /*
-@@.codegen.generated
+@@!.codegen.generated
 */
 
 $$.source.includes.internal {{
@@ -58,19 +58,12 @@ $$.class.name& $$.class.name::operator=($$.class.name&& move){
 }
 
 //
-// Getters
+// Getters and Setters (Copy and Move)
 //
 $$.class.fields.private {{
     $$.type !!.class.name::$$.name(){
         return !!.class.private.prefix$$.name;
     }
-
-}}
-
-//
-// Setters (Copy and Move)
-//
-$$.class.fields.private {{
     !!.class.name& !!.class.name::$$.name(const $$.type& $$.name){
         !!.class.private.prefix$$.name = $$.name;
         return *this;
@@ -81,4 +74,5 @@ $$.class.fields.private {{
     }
 
 }}
+
 }
