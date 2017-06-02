@@ -24,6 +24,7 @@ SOFTWARE.
 '''
 
 import datetime
+import glob
 import json
 import logging
 import os
@@ -35,7 +36,7 @@ import sys
 class Token(object):
     """Contains functionality to read and store codegen tokens."""
     R_OPERATOR = r"(\$\$|!!|\^\^|@@!|@@|%%)"
-    R_PATH = r"(?:\.([\w|\.]*))?"
+    R_PATH = r"(?:((?:\.[\w]+)*)\.?)?"
     R_SELECT = r"(?:\s*\[\[(.*?)\]\])?"
     R_EXPANSION = r"(?:[ |\t]*{{(?:[ ]*\n)?(.*?)[ ]*}}(?:[ ]*\n)?)?"
 
@@ -44,7 +45,7 @@ class Token(object):
 
     def __init__(self, match):
         self.operator = match.group(1)
-        self.path = match.group(2).split(".") if match.group(2) else []
+        self.path = match.group(2)[1:].split(".") if match.group(2) else []
         self.select = match.group(3)
         self.expansion = match.group(4)
         self.indent = self._expansion_indent()
@@ -230,7 +231,7 @@ class File(object):
 
 class Schema(File):
     """Contains functionality to parse and view a json schema."""
-    def __init__(self, path):
+    def __init__(self, path, initialise_json=True):
         if not isinstance(path, str):
             raise ValueError("Schema() - Expected str: ", path)
 
@@ -315,35 +316,51 @@ class Project(Schema):
         if output is not None:
             self._cd_project_dir()
             for item in output:
-                if "schema" in item and "template" in item and "out" in item:
-                    schema = Schema(item["schema"])
-                    template = File(item["template"])
-                    out = File(item["out"])
-
-                    if not schema.exists():
-                        self._log.error("Schema does not exist: %s",
-                                        schema.path())
-                        continue
-                    if not template.exists():
-                        self._log.error("Template does not exist: %s",
-                                        template.path())
-                        continue
-                    if not out.exists():
-                        out.touch()
-
-                    su = self._upsert_file("schema", schema)
-                    tu = self._upsert_file("template", template)
-                    ou = self._upsert_file("out", out)
-
-                    if su or tu or ou:
-                        schema.update()
-                        compiler = Compiler(schema)
-                        compiled = compiler.compile(template)
-                        out.write(compiled)
-                        self._upsert_file("out", out)
-                else:
-                    print("Malformed output item:", item)
+                self._process_output(item)
             self._cd_owd()
+
+    def _process_output(self, item):
+        if "schema" in item and "template" in item and "out" in item:
+            schemas = glob.glob(item["schema"])
+            templates = glob.glob(item["template"])
+            out = item["out"]
+
+            print(schemas)
+            print(templates)
+
+            for schema in schemas:
+                for template in templates:
+                    self._upsert_group(schema, template, out)
+        else:
+            print("Malformed output item:", item)
+
+    def _upsert_group(self, schema_path, template_path, out_path):
+        schema = Schema(schema_path)
+        template = File(template_path)
+        out = File(Compiler(schema).compile(out_path))
+
+        if not schema.exists():
+            self._log.error("Schema does not exist: %s",
+                            schema.path())
+            return False
+        if not template.exists():
+            self._log.error("Template does not exist: %s",
+                            template.path())
+            return False
+        if not out.exists():
+            out.touch()
+
+        su = self._upsert_file("schema", schema)
+        tu = self._upsert_file("template", template)
+        ou = self._upsert_file("out", out)
+
+        if su or tu or ou:
+            schema.update()
+            compiler = Compiler(schema)
+            compiled = compiler.compile(template)
+            out.write(compiled)
+            self._upsert_file("out", out)
+        return True
 
     def _upsert_file(self, ftype, file):
         updated = True
@@ -421,6 +438,7 @@ class Compiler(object):
             raise ValueError(
                 "Compiler() - Expected Schema: ", schema)
 
+        schema.update()
         self._stack = Schema_Stack(schema)
 
     def compile(self, template):

@@ -1,0 +1,14 @@
+{
+  "output": [
+    {
+      "schema": "schemas/library/*.json",
+      "template": "cpp/**/header.template",
+      "out": "../build/examples/cpp/$$.class.name..h"
+    },
+    {
+      "schema": "schemas/**/*.json",
+      "template": "cpp/**/source.template",
+      "out": "../build/examples/cpp/$$.class.name..cpp"
+    }
+  ]
+}
