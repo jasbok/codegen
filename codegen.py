@@ -257,6 +257,10 @@ class File(object):
         """Gets the file path."""
         return self._path
 
+    def basename(self):
+        """Returns the file basename."""
+        return os.path.basename(self._path)
+
     def parent_dir(self):
         """Gets the parent directoy of the file."""
         return os.path.dirname(self._path)
@@ -397,6 +401,9 @@ class Project(Schema):
         return "Project[path='{}']".format(self.path())
 
     def update(self):
+        FunctionResolver.PROJECT_FUNCTIONS["current"]["project"] = \
+            self.basename()
+
         super().update()
         output = self.json("output")
         if output is not None:
