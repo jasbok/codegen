@@ -39,7 +39,7 @@ class Token(object):
     R_OPERATOR = r"(\$\$|!!|\^\^|@@!|@@|%%)"
     R_PATH = r"(?:((?:\.[\w]+)*)\.?)?"
     R_SELECT = r"(?:\s*\[\[(.*?)\]\])?"
-    R_EXPANSION = r"(?:[ |\t]*{{(?:[ ]*\n)?(.*?)[ ]*}}(?:[ ]*\n)?)?"
+    R_EXPANSION = r"(?:[ ]?{{\n?(.+?)([ ]*)}}(\n)?)?"
 
     REGEX_TOKEN = re.compile(
         R_OPERATOR + R_PATH + R_SELECT + R_EXPANSION, re.DOTALL | re.MULTILINE)
@@ -49,12 +49,17 @@ class Token(object):
         self.path = match.group(2)[1:].split(".") if match.group(2) else []
         self.select = match.group(3)
         self.expansion = match.group(4)
+        self.space_end = match.group(5) if match.group(5) is not None else ""
+        self.eol = match.group(6) is not None
         self.indent = self._expansion_indent()
         self.start = match.start()
         self.end = match.end()
 
-        if match.group(0).count("\n") == 1 and match.group(0)[-1] == "\n":
-            self.expansion += "\n"
+        if self.expansion is not None and self.expansion.count("\n") == 0:
+            if self.eol:
+                self.end -= 1
+            self.expansion += self.space_end
+            self.indent = 0
 
     def __repr__(self):
         return "Token[operator='{}', path='{}', select='{}', expansion='{}', "\
@@ -237,6 +242,7 @@ class Schema(File):
             raise ValueError("Schema() - Expected str: ", path)
 
         File.__init__(self, path)
+        self.log = logging.getLogger(self.__class__.__name__)
         self._mtime = None
         self._json = None
 
@@ -253,7 +259,7 @@ class Schema(File):
         if contents:
             self._json = json.loads(contents)
         else:
-            print("Could not load json from file: ", self.path())
+            self.log.error("Could not load json from file: %s", self.path())
             self._json = {}
 
     def json(self, path=None):
@@ -278,13 +284,12 @@ class Schema(File):
         for seg in scope:
             if isinstance(var, list):
                 if not isinstance(seg, int) or seg >= len(var):
-                    print("Segment index out of bounds ({}): {}".format(var,
-                                                                        seg))
+                    self.log.error("Segment index out of bounds (%s): %s",
+                                   var, seg)
                     return None
             elif seg not in var:
-                print("Segment not found in var '{}' ({}): {}".format(seg,
-                                                                      scope,
-                                                                      var))
+                self.log.warning("Segment not found in var '%s' (%s): %s",
+                                 seg, scope, var)
                 return None
             var = var[seg]
 
@@ -356,7 +361,6 @@ class Project(Schema):
         ou = self._upsert_file("out", out)
 
         if su or tu or ou:
-            print("Compiling:", schema.path(), template.path(), out.path())
             compiled = Compiler(schema).compile(template)
             out.write(compiled)
             self._upsert_file("out", out, force_update=True)
@@ -435,16 +439,22 @@ class Schema_Stack(object):
         """Gets the schema value associated with the top of the stack."""
         return self._schema.value(self._scopes[-1])
 
+    def curr_scope(self):
+        """Returns the current scope"""
+        return self._scopes[-1] if self._scopes else None
+
 
 class Compiler(object):
     """Builds a template compiler from a given schema."""
+
     def __init__(self, schema):
         if not isinstance(schema, Schema):
             raise ValueError(
                 "Compiler() - Expected Schema: ", schema)
 
-        schema.update()
+        self.log = logging.getLogger(self.__class__.__name__)
         self._stack = Schema_Stack(schema)
+        schema.update()
 
     def compile(self, template):
         """Compiles a template using the compiler schema."""
@@ -453,12 +463,10 @@ class Compiler(object):
         elif isinstance(template, str):
             tmp = template
         else:
-            raise ValueError(
-                "Compiler.compile - Expected str or File: ", template)
+            raise ValueError("Expected str or File: ", template)
 
         if not tmp:
-            print("Could not compile template: empty template.")
-            return ""
+            raise ValueError("Could not compile: Empty template.")
 
         out = ""
         token = Token.find(tmp)
@@ -467,7 +475,7 @@ class Compiler(object):
             resolved = self._resolve(token)
 
             if token.expansion:
-                indent = token.indent - Compiler.curr_length(out)
+                indent = token.indent - Compiler.curr_line_length(out)
                 if indent != 0:
                     ind = "\n" + " " * abs(indent)
                     if indent > 0:
@@ -481,7 +489,7 @@ class Compiler(object):
         return out + tmp
 
     @staticmethod
-    def curr_length(string):
+    def curr_line_length(string):
         """Gets the length of the last line."""
         indent = 0
         for c in reversed(string):
@@ -504,19 +512,17 @@ class Compiler(object):
 
     def _resolve_value(self, token):
         if not isinstance(token, Token):
-            raise ValueError(
-                "Compiler._resolve_value - Expected Token: ", token)
+            raise ValueError("Expected Token: ", token)
 
+        resolved = ""
         self._stack.push(token)
-
-        compiled = ""
         var = self._stack.value()
         if var is not None:
             if token.expansion is not None:
                 if isinstance(var, list):
                     for index in token.resolve_indices(var):
                         self._stack.push(index)
-                        compiled += self.compile(token.expansion)
+                        resolved += self.compile(token.expansion)
                         self._stack.pop()
                 else:
                     select = token.select
@@ -526,13 +532,15 @@ class Compiler(object):
                         or isinstance(var, float) and var == float(select) \
                         or isinstance(var, str) and var == select
                     if do_compile:
-                        compiled = self.compile(token.expansion)
+                        resolved = self.compile(token.expansion)
             else:
-                compiled = str(var)
-
+                resolved = str(var)
+        else:
+            self.log.warning("Schema variable is null. Current scope: %s",
+                             self._stack.curr_scope())
         self._stack.pop()
 
-        return compiled
+        return resolved
 
 
 class Git(object):

@@ -1,0 +1,18 @@
+// Set all fields one line of arguments.
+void _set_all_single($$.class.fields.private[[:-1]]{{const $$.type& $$.name, }}$$.class.fields.private[[-1]]{{const $$.type& $$.name}}){
+  $$.class.fields.private {{
+      !!.class.private.prefix$$.name = $$.name;
+    }}
+}
+
+// Set all fields mutiple lines of arguments.
+void _set_all_multi($$.class.fields.private[[:-1]] {{
+                  const $$.type& $$.name,
+               }}
+               $$.class.fields.private[[-1]] {{
+                  const $$.type& $$.name
+               }}){
+  $$.class.fields.private {{
+      !!.class.private.prefix$$.name = $$.name;
+  }}
+}

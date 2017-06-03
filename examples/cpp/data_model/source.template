@@ -45,7 +45,7 @@ $$.class.name::$$.class.name($$.class.name&& move)
 
 // Copy Assignment
 $$.class.name& $$.class.name::operator=(const $$.class.name& copy){
-    $$.class.fields.private{{
+    $$.class.fields.private {{
         !!.class.private.prefix$$.name = copy.!!.class.private.prefix$$.name;
     }}
     return *this;
@@ -53,7 +53,7 @@ $$.class.name& $$.class.name::operator=(const $$.class.name& copy){
 
 // Move Assignment
 $$.class.name& $$.class.name::operator=($$.class.name&& move){
-    $$.class.fields.private{{
+    $$.class.fields.private {{
         !!.class.private.prefix$$.name = std::move(move.!!.class.private.prefix$$.name);
     }}
     return *this;
