@@ -34,10 +34,99 @@ import sys
 import time
 
 
+class Git_Helper(object):
+    """Helper class to get git config information."""
+    LOG = logging.getLogger("Git_Helper")
+
+    @staticmethod
+    def config(prop):
+        """ Uses git config to check the value of a property."""
+        result = None
+        try:
+            result = subprocess.check_output(["git", "config", "--get", prop])\
+                .decode("utf-8").replace("\n", "")
+        except subprocess.CalledProcessError as ex:
+            Git_Helper.LOG.error("Failed to retrieve Git config: %s", str(ex))
+        return result
+
+
+class FunctionResolver(object):
+    """Contains resolvable functions."""
+
+    DATE_FUNCTIONS = {
+        "now": lambda x: datetime.datetime.now().strftime(x)
+    }
+
+    GIT_FUNCTIONS = {
+        "email": lambda: Git_Helper.config("user.email"),
+        "name": lambda: Git_Helper.config("user.name"),
+        "remote": lambda: Git_Helper.config("remote.origin.url")
+    }
+
+    PROJECT_FUNCTIONS = {
+        "current": {}
+    }
+
+    STRING_FUNCTIONS = {
+        "upper": lambda x: x.upper(),
+        "lower": lambda x: x.lower(),
+        "camel": lambda x: x.title().replace(" ", ""),
+        "snake": lambda x: x.replace(" ", "_")
+    }
+
+    FUNCTIONS = {
+        "date": DATE_FUNCTIONS,
+        "git": GIT_FUNCTIONS,
+        "project": PROJECT_FUNCTIONS,
+        "str": STRING_FUNCTIONS
+    }
+
+    @staticmethod
+    def resolve(path):
+        """Gets the value corresponding with the path, None otherwise."""
+        if isinstance(path, str):
+            path = path.split(".")
+        elif not isinstance(path, list):
+            raise ValueError("Expected str or list:", path)
+
+        curr_path = []
+        func = FunctionResolver.FUNCTIONS
+        for seg in path:
+            if callable(func):
+                raise ValueError("Function does not exist ('{}''). "
+                                 "Did you mean '{}'"
+                                 .format(".".join(path),
+                                         ".".join(curr_path + seg)))
+            elif not isinstance(func, dict):
+                print(seg, curr_path)
+                raise ValueError("Function does not exist ('{}'')."
+                                 .format(".".join(path)))
+            else:
+                if seg in func:
+                    func = func[seg]
+                else:
+                    alts = []
+                    for key, value in func.items():
+                        if callable(value):
+                            alts.append(".".join(curr_path + [key]))
+                    alts = ", ".join(alts)
+                    raise ValueError("Function does not exist ('{}'').{}"
+                                     .format(".".join(path),
+                                             " Did you mean one of: " + alts
+                                             if alts else ""))
+            curr_path.append(seg)
+
+        if not isinstance(func, str) and not callable(func):
+            raise ValueError("Not a function or string ({})."
+                             .format(".".join(curr_path)))
+
+        return func
+
+
 class Token(object):
     """Contains functionality to read and store codegen tokens."""
     R_OPERATOR = r"(\$\$|!!|\^\^|@@!|@@|%%)"
-    R_PATH = r"(?:((?:\.[\w]+)*)\.?)?"
+    R_PATH = r"(?:((?:\.[\w]+)*)\.{0,2})?"
     R_SELECT = r"(?:\s*\[\[(.*?)\]\])?"
     R_EXPANSION = r"(?:[ ]?{{\n?(.+?)([ ]*)}}(\n)?)?"
 
@@ -66,16 +155,6 @@ class Token(object):
                 "start='{}', end='{}']".format(self.operator, self.path,
                                                self.select, self.expansion,
                                                self.start, self.end)
-
-    def resolve_function(self):
-        """Resolves and evaluates the function from the token path."""
-        if self.path == ["date"]:
-            return datetime.datetime.now().strftime(self.expansion)
-        elif self.path == ["git", "name"]:
-            return Git.config("user.name")
-        elif self.path == ["git", "email"]:
-            return Git.config("user.email")
-        return None
 
     def resolve_template(self, cut_last_char=False):
         """Resolves the template from the token path."""
@@ -323,34 +402,39 @@ class Project(Schema):
         if output is not None:
             self._cd_project_dir()
             self._updated_files = {}
-            for item in output:
-                self._process_output(item)
+            for i, item in enumerate(output):
+                try:
+                    self._process_output(item)
+                except ValueError as ex:
+                    self._log.error("Failed to process output item [%s] "
+                                    "in project file (%s) =>\t\n%s:\t\n%s",
+                                    i, self.path(), str(ex), item)
             self._cd_owd()
 
     def _process_output(self, item):
-        if "schema" in item and "template" in item and "out" in item:
-            schemas = glob.glob(item["schema"])
-            templates = glob.glob(item["template"])
-            out = item["out"]
+        if "schema" not in item:
+            raise ValueError("Malformed output item, missing schema.")
+        if "template" not in item:
+            raise ValueError("Malformed output item, missing template.")
+        if "out" not in item:
+            raise ValueError("Malformed output item, missing out.")
 
-            for schema in schemas:
-                for template in templates:
-                    self._upsert_group(schema, template, out)
-        else:
-            print("Malformed output item:", item)
+        schemas = glob.glob(item["schema"])
+        templates = glob.glob(item["template"])
+        out = item["out"]
+
+        for schema in schemas:
+            for template in templates:
+                self._upsert_group(schema, template, out)
 
     def _upsert_group(self, schema_path, template_path, out_path):
         schema = Schema(schema_path)
         template = File(template_path)
 
         if not schema.exists():
-            self._log.error("Schema does not exist: %s",
-                            schema.path())
-            return False
+            raise ValueError("Schema does not exist: %s", schema.path())
         if not template.exists():
-            self._log.error("Template does not exist: %s",
-                            template.path())
-            return False
+            raise ValueError("Template does not exist: %s", template.path())
 
         out = File(Compiler(schema).compile(out_path))
         if not out.exists():
@@ -361,6 +445,11 @@ class Project(Schema):
         ou = self._upsert_file("out", out)
 
         if su or tu or ou:
+            FunctionResolver.PROJECT_FUNCTIONS["current"]["schema"] = \
+                schema.path()
+            FunctionResolver.PROJECT_FUNCTIONS["current"]["template"] = \
+                template.path()
+
             compiled = Compiler(schema).compile(template)
             out.write(compiled)
             self._upsert_file("out", out, force_update=True)
@@ -443,6 +532,10 @@ class Schema_Stack(object):
         """Returns the current scope"""
         return self._scopes[-1] if self._scopes else None
 
+    def schema_path(self):
+        """Returns the path of the held schema."""
+        return self._schema.path()
+
 
 class Compiler(object):
     """Builds a template compiler from a given schema."""
@@ -463,7 +556,7 @@ class Compiler(object):
         elif isinstance(template, str):
             tmp = template
         else:
-            raise ValueError("Expected str or File: ", template)
+            raise TypeError("Expected str or File: ", template)
 
         if not tmp:
             raise ValueError("Could not compile: Empty template.")
@@ -504,7 +597,20 @@ class Compiler(object):
         if op == "$$" or op == "!!" or op == "^^":
             result = self._resolve_value(token)
         elif op == "%%":
-            result = token.resolve_function()
+            func = FunctionResolver.resolve(token.path)
+            if func:
+                if isinstance(func, str):
+                    result = func
+                elif callable(func):
+                    if token.expansion:
+                        result = func(self.compile(token.expansion))
+                    else:
+                        result = func()
+                else:
+                    raise ValueError("Resolved is not a function or a string "
+                                     "({} => {}).".format(".".join(token.path),
+                                                          func))
+
         elif op == "@@" or op == "@@!":
             result = token.resolve_template(op == "@@!")
 
@@ -512,7 +618,7 @@ class Compiler(object):
 
     def _resolve_value(self, token):
         if not isinstance(token, Token):
-            raise ValueError("Expected Token: ", token)
+            raise TypeError("Expected Token: ", token)
 
         resolved = ""
         self._stack.push(token)
@@ -536,26 +642,12 @@ class Compiler(object):
             else:
                 resolved = str(var)
         else:
-            self.log.warning("Schema variable is null. Current scope: %s",
-                             self._stack.curr_scope())
+            self.log.warning("Schema variable is null: %s [%s]",
+                             self._stack.curr_scope(),
+                             self._stack.schema_path())
         self._stack.pop()
 
         return resolved
-
-
-class Git(object):
-    """Helper class to get git config information."""
-    @staticmethod
-    def config(prop):
-        """ Uses git config to check the value of a property."""
-        result = None
-        try:
-            result = subprocess.check_output(["git", "config", prop])       \
-                .decode("utf-8")                                            \
-                .replace("\n", "")
-        except subprocess.CalledProcessError as ex:
-            print("Failed to retrived Git information: ", ex)
-        return result
 
 
 class Codegen(object):

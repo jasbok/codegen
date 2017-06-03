@@ -1,7 +1,7 @@
 ###############################################################################
 # This file was generated using codegen: https://github.com/jasbok/codegen
-# Schema: %%.current.schema
-# Template: %%.current.template
+# Schema: %%.project.current.schema
+# Template: %%.project.current.template
 ###############################################################################
 
 ###############################################################################

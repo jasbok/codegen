@@ -2,8 +2,8 @@
 @@!.codegen.generated
 */
 
-#ifndef $$.header.guard
-#define $$.header.guard
+#ifndef %%.str.upper{{$$.namespace.._$$.class.name.._h}}
+#define %%.str.upper{{$$.namespace.._$$.class.name.._h}}
 
 $$.header.includes.internal {{
 #include "$$"
@@ -50,4 +50,4 @@ $$.namespace {{
 }
 }}
 
-#endif
+#endif // %%.str.upper{{$$.namespace.._$$.class.name.._h}}
