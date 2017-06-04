@@ -2,12 +2,12 @@
   "output": [
     {
       "schema": "schemas/library/*.json",
-      "template": "cpp/**/header.template",
+      "template": "cpp/data_model/*.h",
       "out": "../build/examples/cpp/$$.class.name...h"
     },
     {
       "schema": "schemas/library/*.json",
-      "template": "cpp/**/source.template",
+      "template": "cpp/data_model/*.cpp",
       "out": "../build/examples/cpp/$$.class.name...cpp"
     }
   ]

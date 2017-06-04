@@ -401,6 +401,7 @@ class Project(Schema):
         return "Project[path='{}']".format(self.path())
 
     def update(self):
+        start_time = time.time()
         FunctionResolver.PROJECT_FUNCTIONS["current"]["project"] = \
             self.basename()
 
@@ -417,6 +418,8 @@ class Project(Schema):
                                     "in project file (%s) =>\t\n%s:\t\n%s",
                                     i, self.path(), str(ex), item)
             self._cd_owd()
+        self.log.info("Project (%s) compiled in %s seconds",
+                      self.path(), time.time() - start_time)
 
     def _process_output(self, item):
         if "schema" not in item:

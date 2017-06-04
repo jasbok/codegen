@@ -41,6 +41,14 @@ public:
       !!.class.name& $$.name($$.type&& $$.name);
 
     }}
+
+    std::string json();
+
+    friend std::ostream& operator<< (std::ostream& cout, const $$.class.name& %%.str.lower{{$$.class.name}}) {
+            cout << json();
+            return cout;
+    }
+
 private:
     $$.class.fields.private {{
         $$.type !!.class.private.prefix$$.name;

@@ -48,6 +48,8 @@
                 "chapter.h"
             ],
             "external": [
+                "ostream",
+                "sstream",
                 "string",
                 "vector"
             ]

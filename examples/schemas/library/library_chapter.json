@@ -33,6 +33,8 @@
         "includes": {
             "internal": [],
             "external": [
+                "ostream",
+                "sstream",
                 "string"
             ]
         }
