@@ -125,8 +125,8 @@ class FunctionResolver(object):
 
 class Token(object):
     """Contains functionality to read and store codegen tokens."""
-    R_OPERATOR = r"(\$\$|!!|\^\^|@@!|@@|%%)"
-    R_PATH = r"(?:((?:\.[\w]+)*)\.{0,2})?"
+    R_OPERATOR = r"(\$\$|!!|\^\^|@@!|@@|%%)(?=\.)"
+    R_PATH = r"(?:((?:\.[\w]+)+)?\.{0,2})"
     R_SELECT = r"(?:\s*\[\[(.*?)\]\])?"
     R_EXPANSION = r"(?:[ ]?{{\n?(.+?)([ ]*)}}(\n)?)?"
 
@@ -401,7 +401,7 @@ class Project(Schema):
         return "Project[path='{}']".format(self.path())
 
     def update(self):
-        start_time = time.time()
+
         FunctionResolver.PROJECT_FUNCTIONS["current"]["project"] = \
             self.basename()
 
@@ -418,8 +418,6 @@ class Project(Schema):
                                     "in project file (%s) =>\t\n%s:\t\n%s",
                                     i, self.path(), str(ex), item)
             self._cd_owd()
-        self.log.info("Project (%s) compiled in %s seconds",
-                      self.path(), time.time() - start_time)
 
     def _process_output(self, item):
         if "schema" not in item:
@@ -435,7 +433,13 @@ class Project(Schema):
 
         for schema in schemas:
             for template in templates:
-                self._upsert_group(schema, template, out)
+                try:
+                    self._upsert_group(schema, template, out)
+                except ValueError as ex:
+                    self._log.error("Failed to process output item "
+                                    "in project file (%s) =>\t\n%s:\t\n%s"
+                                    "\nMessage: %s",
+                                    self.path(), schema, template, str(ex))
 
     def _upsert_group(self, schema_path, template_path, out_path):
         schema = Schema(schema_path)
@@ -460,7 +464,12 @@ class Project(Schema):
             FunctionResolver.PROJECT_FUNCTIONS["current"]["template"] = \
                 template.path()
 
+            start_time = time.time()
             compiled = Compiler(schema).compile(template)
+            self.log.info("[%s]: [%s] compiled with [%s] in %s seconds",
+                          self.path(), schema.path(), template.path(),
+                          time.time() - start_time)
+
             out.write(compiled)
             self._upsert_file("out", out, force_update=True)
         return True
@@ -487,7 +496,8 @@ class Project(Schema):
 
     def _cd_project_dir(self):
         self._owd = os.getcwd()
-        os.chdir(self.parent_dir())
+        if self.parent_dir():
+            os.chdir(self.parent_dir())
 
     def _cd_owd(self):
         if self._owd is not None:
